@@ -1,0 +1,9 @@
+*.inc eol=crlf
+*.bas eol=crlf
+*.tbasic eol=crlf
+*.tbasicu eol=crlf
+
+*.inc linguist-language=PowerBASIC
+*.bas linguist-language=PowerBASIC
+*.tbasic linguist-language=thinBASIC
+*.tbasicu linguist-language=thinBASIC

@@ -1,0 +1,7 @@
+# Compiler files which do not need to be included
+*.log
+*.dll
+*.pbr
+*.RES
+*.bak
+Backup.*.*

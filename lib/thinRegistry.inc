@@ -1,29 +1,31 @@
-%KEY_WOW64_32KEY = &H0200???
-%KEY_WOW64_64KEY = &H0100???
+' **************************************************************************
+' * Registry_GetAllValues
+' * Retrieves all values for given key
+' *
+' * hKey        - registry key
+' **************************************************************************
+FUNCTION Registry_GetAllValues(hKey AS DWORD) AS STRING
+  DIM returnValue AS LONG
+  DIM azKeyName AS ASCIIZ * 32767, azKeyNameLen AS DWORD
+  DIM azKeyValue AS ASCIIZ * 1048576, azKeyValueLen AS DWORD
+  DIM KeyType AS DWORD
 
-FUNCTION GetRegValues(hKey AS DWORD) AS STRING
-  DIM lReturn            AS LONG
-  DIM azKeyName          AS ASCIIZ * 32767   ' up to 32 KB according to MSDN
-  DIM KeyType            AS DWORD
-  DIM azKeyValue         AS ASCIIZ * 1048576 ' up to 1 MB according to MSDN
-  DIM Reserved           AS DWORD
-  DIM lIndex             AS DWORD
-  DIM azKeyNameLen       AS DWORD
-  DIM azKeyValueLen      AS DWORD
+  DIM Reserved AS DWORD
+  DIM lIndex AS DWORD
 
   DIM sKeyValue          AS STRING
   DIM items(1 TO 1024)   AS STRING
   DIM itemCount          AS LONG
 
-  DO WHILE lReturn <> %ERROR_NO_MORE_ITEMS
+  DO WHILE returnValue <> %ERROR_NO_MORE_ITEMS
     azKeyNameLen  = SIZEOF(azKeyName)
     azKeyValueLen = SIZEOF(azKeyValue)
 
     Reserved = %NULL
-    lReturn  = RegEnumValue(hKey, lIndex, azKeyName, BYVAL VARPTR(azKeyNameLen), BYVAL Reserved , BYVAL VARPTR(KeyType), azKeyValue, BYVAL VARPTR(azKeyValueLen))
+    returnValue = RegEnumValue(hKey, lIndex, azKeyName, BYVAL VARPTR(azKeyNameLen), BYVAL Reserved, BYVAL VARPTR(KeyType), azKeyValue, BYVAL VARPTR(azKeyValueLen))
     INCR lIndex
 
-    IF lReturn = %ERROR_SUCCESS THEN
+    IF returnValue = %ERROR_SUCCESS THEN
       SELECT CASE keyType
         CASE %REG_DWORD
           sKeyValue = FORMAT$(CVDWD(azKeyValue))
@@ -40,8 +42,12 @@ FUNCTION GetRegValues(hKey AS DWORD) AS STRING
         REDIM PRESERVE items(1 TO UBOUND(items) * 2)
       END IF
       items(itemCount) = TRIM$(azKeyName) + "=" + sKeyValue
-    ELSEIF lReturn <> %ERROR_NO_MORE_ITEMS THEN
-        FUNCTION = "Error code " + FORMAT$(lReturn) + " in RegEnumValue"
+    ELSEIF returnValue <> %ERROR_NO_MORE_ITEMS THEN
+        DIM errorMessage AS STRING
+        errorMessage = "RegEnumValue fails with error code " + FORMAT$(returnValue) + $CRLF + _
+                       "Check error code meaning at https://msdn.microsoft.com/en-us/library/windows/desktop/ms681381(v=vs.85).aspx"
+
+        thinbasic_RunTimeError ( %ERR__MODULE_SPECIFIC, errorMessage )
         EXIT FUNCTION
     END IF
   LOOP
@@ -54,52 +60,57 @@ FUNCTION GetRegValues(hKey AS DWORD) AS STRING
   END IF
 END FUNCTION
 
-FUNCTION GetAllKeys(BYVAL lHKey AS DWORD, lHive AS ASCIIZ, BYVAL sSep AS STRING) AS STRING
-  DIM lReturn            AS LONG
-  DIM szSubKeyName       AS ASCIIZ * 1024
-  DIM azClass            AS ASCIIZ * 1024
-  DIM Reserved           AS DWORD
-  DIM LastWriteTime      AS FILETIME
-  DIM lIndex             AS DWORD
-  DIM lNameLen           AS DWORD
-  DIM lClassLen          AS LONG
-  DIM hKey               AS DWORD
-  DIM A                  AS STRING
-  DIM strTmp             AS STRING
+' **************************************************************************
+' * Registry_GetAllKeys
+' * Retrieves all keys for given registry path
+' *
+' * hKey        - One of the following equates:
+' *                %HKEY_CLASSES_ROOT,
+' *                %HKEY_CURRENT_CONFIG
+' *                %HKEY_CURRENT_USER
+' *                %HKEY_LOCAL_MACHINE
+' *                %HKEY_USERS
+' * lHive       - Name of a subkey. This parameter cannot be NULL
+' * sSep        - Separator of the returned items
+' **************************************************************************
+FUNCTION Registry_GetAllKeys(BYVAL lHKey AS DWORD, lHive AS ASCIIZ, BYVAL sSep AS STRING) AS STRING
+  DIM returnValue AS LONG
+  DIM azSubKeyName AS ASCIIZ * 1024, lSubKeyNameLen AS DWORD
+  DIM azClass AS ASCIIZ * 1024, lClassLen AS DWORD
+  DIM Reserved AS DWORD
+  DIM LastWriteTime AS FILETIME
+  DIM lIndex AS DWORD
+  DIM hKey AS DWORD
 
-  lNamelen = 255
-  Reserved = 0
-  lIndex   = 0
+  DIM result AS STRING
 
-  lReturn = RegOpenKeyEx(lHKey, lHive, 0, BYVAL %KEY_READ, hKey)
+  returnValue = RegOpenKeyEx(lHKey, lHive, 0, BYVAL %KEY_READ, hKey)
 
-  IF lReturn <> %ERROR_SUCCESS THEN
-      IF lReturn = %ERROR_FILE_NOT_FOUND THEN
-         FUNCTION = ""
+  IF returnValue <> %ERROR_SUCCESS THEN
+      IF returnValue = %ERROR_FILE_NOT_FOUND THEN
          EXIT FUNCTION
       END IF
-      A = "Open Key Fails for " + lhive + " Error=" + STR$(lReturn) + $CRLF
-      IF lReturn = %ERROR_ACCESS_DENIED THEN
-         a = a + " Access Denied to Registry"
-      END IF
-      MSGBOX " " + A, , "Error"
-      FUNCTION = A + $CRLF
-      EXIT FUNCTION
+
+      DIM errorMessage AS STRING
+      errorMessage = "RegOpenKeyEx fails for " + lHive + ", error code " + FORMAT$(returnValue) + $CRLF + _
+                     "Check error code meaning at https://msdn.microsoft.com/en-us/library/windows/desktop/ms681381(v=vs.85).aspx"
+
+      thinbasic_RunTimeError ( %ERR__MODULE_SPECIFIC, errorMessage )
   END IF
 
-  strTmp = GetRegValues(hKey)
+  result = Registry_GetAllValues(hKey)
 
   ' Enumerate all the subkeys for the current key.
   '...............................................
-  DO WHILE lReturn <> %ERROR_NO_MORE_ITEMS
-     IF lReturn = %ERROR_SUCCESS THEN
-        lNameLen = SIZEOF(szSubKeyName)
+  DO WHILE returnValue <> %ERROR_NO_MORE_ITEMS
+     IF returnValue = %ERROR_SUCCESS THEN
+        lSubKeyNameLen = SIZEOF(azSubKeyName)
         lClassLen = SIZEOF(azClass)
-        lReturn = RegEnumKeyEx(hKey, lIndex, szSubKeyName, BYVAL VARPTR(lNameLen), Reserved, BYVAL VARPTR(azClass), BYVAL VARPTR(lClasslen), LastWriteTime)
+        returnValue = RegEnumKeyEx(hKey, lIndex, azSubKeyName, BYVAL VARPTR(lSubKeyNameLen), Reserved, BYVAL VARPTR(azClass), BYVAL VARPTR(lClasslen), LastWriteTime)
 
-        IF (lReturn <> %ERROR_NO_MORE_ITEMS) THEN
-           IF lReturn = %ERROR_SUCCESS THEN
-              strTmp += IIF$(LEN(strTmp), sSep, "") + szSubKeyName
+        IF (returnValue <> %ERROR_NO_MORE_ITEMS) THEN
+           IF returnValue = %ERROR_SUCCESS THEN
+              result += IIF$(LEN(result), sSep, "") + azSubKeyName
            END IF
         END IF
      END IF
@@ -108,12 +119,12 @@ FUNCTION GetAllKeys(BYVAL lHKey AS DWORD, lHive AS ASCIIZ, BYVAL sSep AS STRING)
 
   RegCloseKey hKey
 
-  FUNCTION = strTmp
+  FUNCTION = result
 
 END FUNCTION
 
 ' **************************************************************************
-' * SetRegValue
+' * Registry_SetValue
 ' * Set a string registry value
 ' *
 ' * hKey        - One of the following equates:
@@ -126,25 +137,23 @@ END FUNCTION
 ' * szValueName - Name of the value to set
 ' * szValue     - Data to be stored
 ' **************************************************************************
-FUNCTION SetRegValue(BYVAL hKey AS LONG, szSubKey AS ASCIIZ, szValueName AS ASCIIZ, szValue AS ASCIIZ) AS LONG
-  LOCAL lRet      AS LONG
+FUNCTION Registry_SetValue(BYVAL hKey AS LONG, szSubKey AS ASCIIZ, szValueName AS ASCIIZ, szValue AS ASCIIZ) AS LONG
+  LOCAL returnValue      AS LONG
   LOCAL hOpenKey  AS LONG
 
   IF RegCreateKeyEx(hKey, szSubKey, %NULL, "", %REG_OPTION_NON_VOLATILE, _
-                    %KEY_WRITE, BYVAL %NULL, hOpenKey, lRet) <> %ERROR_SUCCESS THEN
+                    %KEY_WRITE, BYVAL %NULL, hOpenKey, returnValue) <> %ERROR_SUCCESS THEN
     EXIT FUNCTION
   END IF
 
-  lRet = RegSetValueEx(hOpenKey, szValueName, %NULL, %REG_SZ, szValue, LEN(szValue) + 1)
-  CALL RegCloseKey(hOpenKey)
+  returnValue = RegSetValueEx(hOpenKey, szValueName, %NULL, %REG_SZ, szValue, LEN(szValue) + 1)
+  RegCloseKey(hOpenKey)
 
-  IF lRet = %ERROR_SUCCESS THEN
-    FUNCTION = %TRUE
-  END IF
+  FUNCTION = (returnValue = %ERROR_SUCCESS)
 END FUNCTION
 
 ' **************************************************************************
-' * SetRegDwordValue
+' * Registry_SetDWord
 ' * Set a binary registry value - very usefull to save UDTs to the registry
 ' *
 ' * hKey         - One of the following equates:
@@ -157,25 +166,23 @@ END FUNCTION
 ' * szValueName  - Name of the value to set
 ' * dwValue      - Dword value to store
 ' **************************************************************************
-FUNCTION SetRegDwordValue(BYVAL hKey AS LONG, szSubKey AS ASCIIZ, szValueName AS ASCIIZ, BYVAL dwValue AS DWORD) AS LONG
-  LOCAL lRet     AS LONG
+FUNCTION Registry_SetDWord(BYVAL hKey AS LONG, szSubKey AS ASCIIZ, szValueName AS ASCIIZ, BYVAL dwValue AS DWORD) AS LONG
+  LOCAL returnValue     AS LONG
   LOCAL hOpenKey    AS LONG
 
   IF RegCreateKeyEx( hKey, szSubKey, %NULL, "", %REG_OPTION_NON_VOLATILE, _
-                    %KEY_WRITE, BYVAL %NULL, hOpenKey, lRet) <> %ERROR_SUCCESS THEN
+                    %KEY_WRITE, BYVAL %NULL, hOpenKey, returnValue) <> %ERROR_SUCCESS THEN
     EXIT FUNCTION
   END IF
 
-  lRet = RegSetValueEx(hOpenKey, szValueName, %NULL, %REG_DWORD, dwValue, SIZEOF(dwValue))
-  CALL RegCloseKey(hOpenKey)
+  returnValue = RegSetValueEx(hOpenKey, szValueName, %NULL, %REG_DWORD, dwValue, SIZEOF(dwValue))
+  RegCloseKey(hOpenKey)
 
-  IF lRet = %ERROR_SUCCESS THEN
-    FUNCTION = %TRUE
-  END IF
+  FUNCTION = (returnValue = %ERROR_SUCCESS)
 END FUNCTION
 
 ' **************************************************************************
-' * SetRegBinValue
+' * Registry_SetBin
 ' * Set a binary registry value - very usefull to save UDTs to the registry
 ' *
 ' * hKey        - One of the following equates:
@@ -189,25 +196,23 @@ END FUNCTION
 ' * BinValuePtr - Pointer to a buffer containing the data to be stored
 ' * lBufferSize - Specifies the size, in bytes, of the buffer
 ' **************************************************************************
-FUNCTION SetRegBinValue(BYVAL hKey AS LONG, szSubKey AS ASCIIZ, szValueName AS ASCIIZ, BYVAL BinValuePtr AS LONG, BYVAL lBufferSize AS LONG) AS LONG
-  LOCAL lRet      AS LONG
+FUNCTION Registry_SetBin(BYVAL hKey AS LONG, szSubKey AS ASCIIZ, szValueName AS ASCIIZ, BYVAL BinValuePtr AS LONG, BYVAL lBufferSize AS LONG) AS LONG
+  LOCAL returnValue      AS LONG
   LOCAL hOpenKey  AS LONG
 
   IF RegCreateKeyEx(hKey, szSubKey, %NULL, "", %REG_OPTION_NON_VOLATILE, _
-                    %KEY_WRITE, BYVAL %NULL, hOpenKey, lRet) <> %ERROR_SUCCESS THEN
+                    %KEY_WRITE, BYVAL %NULL, hOpenKey, returnValue) <> %ERROR_SUCCESS THEN
     EXIT FUNCTION
   END IF
 
-  lRet = RegSetValueEx(hOpenKey, szValueName, %NULL, %REG_BINARY, BYVAL BinValuePtr, lBufferSize)
-  CALL RegCloseKey(hOpenKey)
+  returnValue = RegSetValueEx(hOpenKey, szValueName, %NULL, %REG_BINARY, BYVAL BinValuePtr, lBufferSize)
+  RegCloseKey(hOpenKey)
 
-  IF lRet = %ERROR_SUCCESS THEN
-    FUNCTION = %TRUE
-  END IF
+  FUNCTION = (returnValue = %ERROR_SUCCESS)
 END FUNCTION
 
 ' **************************************************************************
-' * SetRegTxtNumValue
+' * Registry_SetTxtNum
 ' * Set a registry value
 ' *
 ' * hKey        - One of the following equates:
@@ -219,28 +224,26 @@ END FUNCTION
 ' * zSubKey     - Name of a subkey. This parameter cannot be NULL
 ' * zValueName  - Name of the value to query
 ' **************************************************************************
-FUNCTION SetRegTxtNumValue(BYVAL hKey AS LONG, szSubKey AS ASCIIZ, szValueName AS ASCIIZ, BYVAL lValue AS LONG) AS LONG
-  LOCAL lRet        AS LONG
+FUNCTION Registry_SetTxtNum(BYVAL hKey AS LONG, szSubKey AS ASCIIZ, szValueName AS ASCIIZ, BYVAL lValue AS LONG) AS LONG
+  LOCAL returnValue AS LONG
   LOCAL hOpenKey    AS LONG
   LOCAL szTmp       AS ASCIIZ * 64
 
   FUNCTION = %FALSE
   IF RegCreateKeyEx( hKey, szSubKey, %NULL, "", %REG_OPTION_NON_VOLATILE, _
-                    %KEY_WRITE, BYVAL %NULL, hOpenKey, lRet) <> %ERROR_SUCCESS THEN
+                    %KEY_WRITE, BYVAL %NULL, hOpenKey, returnValue) <> %ERROR_SUCCESS THEN
     EXIT FUNCTION
   END IF
 
   szTmp = FORMAT$(lValue)
-  lRet = RegSetValueEx(hOpenKey, szValueName, %NULL, %REG_SZ, szTmp, LEN(szTmp)+1)
-  CALL RegCloseKey(hOpenKey)
+  returnValue = RegSetValueEx(hOpenKey, szValueName, %NULL, %REG_SZ, szTmp, LEN(szTmp)+1)
+  RegCloseKey(hOpenKey)
 
-  IF lRet = %ERROR_SUCCESS THEN
-    FUNCTION = %TRUE
-  END IF
+  FUNCTION = (returnValue = %ERROR_SUCCESS)
 END FUNCTION
 
 ' **************************************************************************
-' * SetRegTxtBoolValue
+' * Registry_SetTxtBool
 ' * Set a registry value
 ' *
 ' * hKey        - One of the following equates:
@@ -252,28 +255,26 @@ END FUNCTION
 ' * zSubKey     - Name of a subkey. This parameter cannot be NULL
 ' * zValueName  - Name of the value to query
 ' **************************************************************************
-FUNCTION SetRegTxtBoolValue(BYVAL hKey AS LONG, szSubKey AS ASCIIZ, szValueName AS ASCIIZ, BYVAL lValue AS LONG) AS LONG
-  LOCAL lRet     AS LONG
+FUNCTION Registry_SetTxtBool(BYVAL hKey AS LONG, szSubKey AS ASCIIZ, szValueName AS ASCIIZ, BYVAL lValue AS LONG) AS LONG
+  LOCAL returnValue     AS LONG
   LOCAL hOpenKey    AS LONG
   LOCAL szTmp       AS ASCIIZ * 64
 
   FUNCTION = %FALSE
   IF RegCreateKeyEx( hKey, szSubKey, %NULL, "", %REG_OPTION_NON_VOLATILE, _
-                    %KEY_WRITE, BYVAL %NULL, hOpenKey, lRet) <> %ERROR_SUCCESS THEN
+                    %KEY_WRITE, BYVAL %NULL, hOpenKey, returnValue) <> %ERROR_SUCCESS THEN
     EXIT FUNCTION
   END IF
 
   szTmp = IIF$(lValue = %TRUE, "Yes", "No")
-  lRet = RegSetValueEx(hOpenKey, szValueName, %NULL, %REG_SZ, szTmp, LEN(szTmp)+1)
-  CALL RegCloseKey(hOpenKey)
+  returnValue = RegSetValueEx(hOpenKey, szValueName, %NULL, %REG_SZ, szTmp, LEN(szTmp)+1)
+  RegCloseKey(hOpenKey)
 
-  IF lRet = %ERROR_SUCCESS THEN
-    FUNCTION = %TRUE
-  END IF
+  FUNCTION = (returnValue = %ERROR_SUCCESS)
 END FUNCTION
 
 ' **************************************************************************
-' * GetRegValue
+' * Registry_GetValue
 ' * Get a string registry value
 ' *
 ' * hKey       - One of the following equates:
@@ -285,11 +286,11 @@ END FUNCTION
 ' * zSubKey    - Name of a subkey. This parameter cannot be NULL
 ' * zValueName - Name of the value to query
 ' **************************************************************************
-FUNCTION GetRegValue( _
-                                BYVAL hLocation   AS DWORD, _
-                                BYVAL sSubKeys    AS STRING, _
-                                BYVAL sValueName  AS STRING, _
-                      OPTIONAL BYVAL sDefault     AS STRING _
+FUNCTION Registry_GetValue( _
+                               BYVAL hLocation   AS DWORD, _
+                               BYVAL sSubKeys    AS STRING, _
+                               BYVAL sValueName  AS STRING, _
+                      OPTIONAL BYVAL sDefault    AS STRING _
                      ) AS STRING
 
   LOCAL hKey    AS DWORD
@@ -303,15 +304,15 @@ FUNCTION GetRegValue( _
   IF (RegOpenKeyEx(hLocation, TRIM$(sSubKeys, "\"), 0, %KEY_READ, hKey) = %ERROR_SUCCESS) THEN
      dwType = %REG_SZ
      dwSize = SIZEOF(zRegVal)
-     CALL RegQueryValueEx(hKey, BYCOPY sValueName, 0, dwType, zRegVal, dwSize)
+     RegQueryValueEx(hKey, BYCOPY sValueName, 0, dwType, zRegVal, dwSize)
      RegCloseKey hKey
   END IF
-  FUNCTION = zRegVal
 
+  FUNCTION = zRegVal
 END FUNCTION
 
 ' **************************************************************************
-' * GetRegExists
+' * Registry_KeyExists
 ' * Check if registry key exists
 ' *
 ' * hKey       - One of the following equates:
@@ -323,30 +324,28 @@ END FUNCTION
 ' * zSubKey    - Name of a subkey. This parameter cannot be NULL
 ' * zValueName - Name of the value to query
 ' **************************************************************************
-FUNCTION GetRegExists(BYVAL hKey AS LONG, szSubKey AS ASCIIZ, szValueName AS ASCIIZ) AS LONG
-  LOCAL lRet        AS LONG
+FUNCTION Registry_KeyExists(BYVAL hKey AS LONG, szSubKey AS ASCIIZ, szValueName AS ASCIIZ) AS LONG
+  LOCAL returnValue        AS LONG
   LOCAL hOpenKey    AS LONG
   LOCAL sBuffer     AS STRING
   LOCAL lBufferSize AS LONG
 
-  lRet = RegOpenKeyEx(hKey, szSubKey, %Null, %KEY_QUERY_VALUE, hOpenKey)
-  IF lRet = %ERROR_SUCCESS THEN
-    lRet = RegQueryValueEx(hOpenKey, szValueName, %Null, %REG_SZ, BYVAL %Null, lBufferSize)
-    IF lRet = %ERROR_SUCCESS THEN
-      'sBuffer = String$(lBufferSize, %Null)
-      'lRet = RegQueryValueEx(hOpenKey, szValueName, %Null, %REG_SZ, ByVal StrPtr(sBuffer), lBufferSize)
+  returnValue = RegOpenKeyEx(hKey, szSubKey, %Null, %KEY_QUERY_VALUE, hOpenKey)
+  IF returnValue = %ERROR_SUCCESS THEN
+    returnValue = RegQueryValueEx(hOpenKey, szValueName, %Null, %REG_SZ, BYVAL %Null, lBufferSize)
+    IF returnValue = %ERROR_SUCCESS THEN
       FUNCTION = %TRUE
     ELSE
       FUNCTION = -2&
     END IF
-    CALL RegCloseKey(hOpenKey)
+    RegCloseKey(hOpenKey)
   ELSE
     FUNCTION = -1&
   END IF
 END FUNCTION
 
 ' **************************************************************************
-' * GetRegExists
+' * Registry_PathExists
 ' * Check if registry key exists
 ' *
 ' * hKey       - One of the following equates:
@@ -358,21 +357,20 @@ END FUNCTION
 ' * zSubKey    - Name of a subkey. This parameter cannot be NULL
 ' * zValueName - Name of the value to query
 ' **************************************************************************
-FUNCTION GetRegPathExists(BYVAL hKey AS LONG, szSubKey AS ASCIIZ) AS LONG
-  LOCAL lRet        AS LONG
+FUNCTION Registry_PathExists(BYVAL hKey AS LONG, szSubKey AS ASCIIZ) AS LONG
+  LOCAL returnValue        AS LONG
   LOCAL hOpenKey    AS LONG
   LOCAL sBuffer     AS STRING
   LOCAL lBufferSize AS LONG
 
-  lRet = RegOpenKeyEx(hKey, szSubKey, %Null, %KEY_QUERY_VALUE, hOpenKey)
-  IF lRet = %ERROR_SUCCESS THEN
-    FUNCTION = %TRUE
-    CALL RegCloseKey(hOpenKey)
-  END IF
+  returnValue = RegOpenKeyEx(hKey, szSubKey, %Null, %KEY_QUERY_VALUE, hOpenKey)
+  RegCloseKey(hOpenKey)
+
+  FUNCTION = (returnValue = %ERROR_SUCCESS)
 END FUNCTION
 
 ' **************************************************************************
-' * GetRegDwordValue
+' * Registry_GetDWord
 ' * Get a Dword registry value
 ' *
 ' * hKey       - One of the following equates:
@@ -384,24 +382,24 @@ END FUNCTION
 ' * zSubKey    - Name of a subkey. This parameter cannot be NULL
 ' * zValueName - Name of the value to query
 ' **************************************************************************
-FUNCTION GetRegDwordValue(BYVAL hKey AS LONG, szSubKey AS ASCIIZ, szValueName AS ASCIIZ) AS DWORD
-  LOCAL lRet        AS LONG
+FUNCTION Registry_GetDWord(BYVAL hKey AS LONG, szSubKey AS ASCIIZ, szValueName AS ASCIIZ) AS DWORD
+  LOCAL returnValue        AS LONG
   LOCAL hOpenKey    AS LONG
   LOCAL dwTmp       AS DWORD
   LOCAL lBufferSize AS LONG
 
-  lRet = RegOpenKeyEx(hKey, szSubKey, %NULL, %KEY_QUERY_VALUE, hOpenKey)
-  IF lRet = %ERROR_SUCCESS THEN
+  returnValue = RegOpenKeyEx(hKey, szSubKey, %NULL, %KEY_QUERY_VALUE, hOpenKey)
+  IF returnValue = %ERROR_SUCCESS THEN
     lBufferSize = SIZEOF(dwTmp)
-    lRet = RegQueryValueEx(hOpenKey, szValueName, %NULL, %REG_DWORD, dwTmp, lBufferSize)
-    CALL RegCloseKey(hOpenKey)
+    returnValue = RegQueryValueEx(hOpenKey, szValueName, %NULL, %REG_DWORD, dwTmp, lBufferSize)
+    RegCloseKey(hOpenKey)
     FUNCTION = dwTmp
   END IF
 
 END FUNCTION
 
 ' **************************************************************************
-' * GetRegBinValue
+' * Registry_GetBin
 ' * Get a binary registry value - very usefull to get UDTs from the registry
 ' *
 ' * hKey        - One of the following equates:
@@ -415,24 +413,24 @@ END FUNCTION
 ' * BinValuePtr - Pointer to a buffer that receives the value's data
 ' * lBufferSize - Specifies the size, in bytes, of the buffer
 ' **************************************************************************
-FUNCTION GetRegBinValue(BYVAL hKey AS LONG, szSubKey AS ASCIIZ, szValueName AS ASCIIZ, BYVAL BinValuePtr AS LONG, BYVAL lBufferSize AS LONG) AS LONG
-  LOCAL lRet     AS LONG
+FUNCTION Registry_GetBin(BYVAL hKey AS LONG, szSubKey AS ASCIIZ, szValueName AS ASCIIZ, BYVAL BinValuePtr AS LONG, BYVAL lBufferSize AS LONG) AS LONG
+  LOCAL returnValue     AS LONG
   LOCAL hOpenKey    AS LONG
 
   FUNCTION = %FALSE
 
-  lRet = RegOpenKeyEx(hKey, szSubKey, %NULL, %KEY_QUERY_VALUE, hOpenKey)
-  IF lRet = %ERROR_SUCCESS THEN
-    lRet = RegQueryValueEx( hOpenKey, szValueName, %NULL, %REG_BINARY, BYVAL BinValuePtr, lBufferSize)
-    IF lRet = %ERROR_SUCCESS THEN
+  returnValue = RegOpenKeyEx(hKey, szSubKey, %NULL, %KEY_QUERY_VALUE, hOpenKey)
+  IF returnValue = %ERROR_SUCCESS THEN
+    returnValue = RegQueryValueEx( hOpenKey, szValueName, %NULL, %REG_BINARY, BYVAL BinValuePtr, lBufferSize)
+    IF returnValue = %ERROR_SUCCESS THEN
       FUNCTION = %TRUE
     END IF
-    CALL RegCloseKey(hOpenKey)
+    RegCloseKey(hOpenKey)
   END IF
 END FUNCTION
 
 ' **************************************************************************
-' * GetRegTxtNumValue
+' * Registry_GetTxtNum
 ' * Get a number from a registry value stored as text
 ' *
 ' * hKey        - One of the following equates:
@@ -444,22 +442,22 @@ END FUNCTION
 ' * zSubKey     - Name of a subkey. This parameter cannot be NULL
 ' * zValueName  - Name of the value to query
 ' **************************************************************************
-FUNCTION GetRegTxtNumValue(BYVAL hKey AS LONG, zSubKey AS ASCIIZ, zValueName AS ASCIIZ, BYVAL lDefVal AS LONG) AS LONG
-  LOCAL lRet     AS LONG
+FUNCTION Registry_GetTxtNum(BYVAL hKey AS LONG, zSubKey AS ASCIIZ, zValueName AS ASCIIZ, BYVAL lDefVal AS LONG) AS LONG
+  LOCAL returnValue     AS LONG
   LOCAL hOpenKey    AS LONG
   LOCAL szTmp       AS ASCIIZ * 64
   LOCAL lBufferSize AS LONG
 
-  lRet = RegOpenKeyEx(hKey, zSubKey, %NULL, %KEY_QUERY_VALUE, hOpenKey)
-  IF lRet = %ERROR_SUCCESS THEN
+  returnValue = RegOpenKeyEx(hKey, zSubKey, %NULL, %KEY_QUERY_VALUE, hOpenKey)
+  IF returnValue = %ERROR_SUCCESS THEN
     lBufferSize = SIZEOF(szTmp)
-    lRet = RegQueryValueEx(hOpenKey, zValueName, %NULL, %REG_SZ, szTmp, lBufferSize)
+    returnValue = RegQueryValueEx(hOpenKey, zValueName, %NULL, %REG_SZ, szTmp, lBufferSize)
     IF LEN(szTmp) > 0 THEN
       FUNCTION = VAL(szTmp)
     ELSE
       FUNCTION = lDefVal
     END IF
-    CALL RegCloseKey(hOpenKey)
+    RegCloseKey(hOpenKey)
   ELSE
     FUNCTION = lDefVal
   END IF
@@ -467,7 +465,7 @@ FUNCTION GetRegTxtNumValue(BYVAL hKey AS LONG, zSubKey AS ASCIIZ, zValueName AS 
 END FUNCTION
 
 ' **************************************************************************
-' * GetRegTxtBoolValue
+' * Registry_GetTxtBool
 ' * Get a number from a registry value stored as text
 ' *
 ' * hKey        - One of the following equates:
@@ -479,16 +477,16 @@ END FUNCTION
 ' * zSubKey     - Name of a subkey. This parameter cannot be NULL
 ' * zValueName  - Name of the value to query
 ' **************************************************************************
-FUNCTION GetRegTxtBoolValue(BYVAL hKey AS LONG, zSubKey AS ASCIIZ, zValueName AS ASCIIZ, BYVAL lDefVal AS LONG) AS LONG
-  LOCAL RetCode     AS LONG
+FUNCTION Registry_GetTxtBool(BYVAL hKey AS LONG, zSubKey AS ASCIIZ, zValueName AS ASCIIZ, BYVAL lDefVal AS LONG) AS LONG
+  LOCAL returnValue     AS LONG
   LOCAL hOpenKey    AS LONG
   LOCAL zText       AS ASCIIZ * 2048
   LOCAL lBufferSize AS LONG
 
-  RetCode = RegOpenKeyEx(hKey, zSubKey, %NULL, %KEY_QUERY_VALUE, hOpenKey)
-  IF RetCode = %ERROR_SUCCESS THEN
+  returnValue = RegOpenKeyEx(hKey, zSubKey, %NULL, %KEY_QUERY_VALUE, hOpenKey)
+  IF returnValue = %ERROR_SUCCESS THEN
     lBufferSize = SIZEOF(zText)
-    RetCode = RegQueryValueEx( hOpenKey, zValueName, %NULL, %REG_SZ, zText, lBufferSize)
+    returnValue = RegQueryValueEx( hOpenKey, zValueName, %NULL, %REG_SZ, zText, lBufferSize)
     IF LEN(zText) > 0 THEN
       IF UCASE$(zText) = "YES" OR UCASE$(zText) = "TRUE" THEN
         FUNCTION = %TRUE
@@ -504,9 +502,8 @@ FUNCTION GetRegTxtBoolValue(BYVAL hKey AS LONG, zSubKey AS ASCIIZ, zValueName AS
 
 END FUNCTION
 
-
 ' **************************************************************************
-' * DelRegValue
+' * Registry_DelValue
 ' * Delete a registry value
 ' *
 ' * hKey        - One of the following equates:
@@ -518,26 +515,24 @@ END FUNCTION
 ' * zSubKey     - Name of a subkey. This parameter cannot be NULL
 ' * zValueName  - Name of the value to remove
 ' **************************************************************************
-FUNCTION DelRegValue (BYVAL hKey AS LONG, zSubKey AS ASCIIZ, zValueName AS ASCIIZ) AS LONG
-  LOCAL RetCode     AS LONG
+FUNCTION Registry_DelValue(BYVAL hKey AS LONG, zSubKey AS ASCIIZ, zValueName AS ASCIIZ) AS LONG
+  LOCAL returnValue     AS LONG
   LOCAL hOpenKey    AS LONG
 
   FUNCTION = %FALSE
 
-  RetCode = RegOpenKeyEx(hKey, zSubKey, %NULL, %KEY_ALL_ACCESS, hOpenKey)
-  IF RetCode = %ERROR_SUCCESS THEN
-    RetCode = RegDeleteValue(hOpenKey, zValueName)
+  returnValue = RegOpenKeyEx(hKey, zSubKey, %NULL, %KEY_ALL_ACCESS, hOpenKey)
+  IF returnValue = %ERROR_SUCCESS THEN
+    returnValue = RegDeleteValue(hOpenKey, zValueName)
   END IF
 
   RegCloseKey hOpenKey
 
-  IF RetCode = %ERROR_SUCCESS THEN
-    FUNCTION = %TRUE
-  END IF
+  FUNCTION = (returnValue = %ERROR_SUCCESS)
 END FUNCTION
 
 ' **************************************************************************
-' * DelRegValue
+' * Registry_DelKey
 ' * Delete a registry key
 ' *
 ' * hKey        - One of the following equates:
@@ -548,18 +543,16 @@ END FUNCTION
 ' *                %HKEY_USERS
 ' * zSubKey     - Name of a subkey to remove. This parameter cannot be NULL
 ' **************************************************************************
-FUNCTION DelRegKey(BYVAL hKey AS LONG, zSubKey AS ASCIIZ) AS LONG
-  LOCAL RetCode   AS LONG
+FUNCTION Registry_DelKey(BYVAL hKey AS LONG, zSubKey AS ASCIIZ) AS LONG
+  LOCAL returnValue   AS LONG
   LOCAL hOpenKey  AS LONG
 
   FUNCTION = %FALSE
 
-  IF RegOpenKeyEx(hKey, zSubKey, %NULL, %KEY_ALL_ACCESS, hOpenKey) <> %ERROR_SUCCESS THEN  EXIT FUNCTION
-  RetCode = RegDeleteKey(hKey, zSubKey)
+  IF RegOpenKeyEx(hKey, zSubKey, %NULL, %KEY_ALL_ACCESS, hOpenKey) <> %ERROR_SUCCESS THEN EXIT FUNCTION
+  returnValue = RegDeleteKey(hKey, zSubKey)
   RegCloseKey hOpenKey
 
-  IF RetCode = %ERROR_SUCCESS THEN
-    FUNCTION = %TRUE
-  END IF
+  FUNCTION = (returnValue = %ERROR_SUCCESS)
 END FUNCTION
 '------------------------------------------------------------------------------

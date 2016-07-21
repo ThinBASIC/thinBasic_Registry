@@ -1,23 +1,3 @@
-' COPYRIGHT AND PERMISSION NOTICE
-' ============================================================================
-' Copyright (c) 2004 - 2016, thinBasic <support@thinbasic.com>
-'
-' All rights reserved.
-'
-' Permission to use and copy this software for any non commercial purpose
-' with or without fee is hereby granted, provided that the above copyright
-' notice and this permission notice appear in all copies.
-'
-' For commercial purpose, contact the copyright holder.
-'
-' THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-' IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-' FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT OF THIRD PARTY RIGHTS.
-' IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
-' DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
-' OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
-' USE OR OTHER DEALINGS IN THE SOFTWARE.
-
 #COMPILE DLL
 #REGISTER NONE
 #DIM ALL
@@ -28,7 +8,7 @@
 #INCLUDE ".\thinCore.INC"
 
 '------------------------------------------------------------------
-#INCLUDE ".\thinRegistry.INC"
+#INCLUDE ".\thinRegistry.inc"
 '------------------------------------------------------------------
 
 FUNCTION Registry_ConvertHKey(BYVAL sHKey AS STRING) AS DWORD
@@ -68,7 +48,7 @@ FUNCTION Exec_Registry_GetValue() AS STRING
         IF thinBasic_CheckCloseParens() THEN
           tmpHKey = Registry_ConvertHKey(lHKey)
           IF tmpHKey <> 0 THEN
-            lTmp = GetRegValue(tmpHKey, BYCOPY lMainKey, BYCOPY lValueName)
+            lTmp = Registry_GetValue(tmpHKey, BYCOPY lMainKey, BYCOPY lValueName)
             FUNCTION = lTmp
           END IF
         END IF
@@ -98,7 +78,7 @@ FUNCTION Exec_Registry_KeyExists() AS EXT
         IF thinBasic_CheckCloseParens() THEN
           tmpHKey = Registry_ConvertHKey(lHKey)
           IF tmpHKey <> 0 THEN
-            lret = GetRegExists(tmpHKey, BYCOPY lMainKey, BYCOPY lValueName)
+            lret = Registry_KeyExists(tmpHKey, BYCOPY lMainKey, BYCOPY lValueName)
             FUNCTION = lret
           END IF
         END IF
@@ -124,7 +104,7 @@ FUNCTION Exec_Registry_PathExists() AS EXT
       IF thinBasic_CheckCloseParens() THEN
         tmpHKey = Registry_ConvertHKey(lHKey)
         IF tmpHKey <> 0 THEN
-          lret = GetRegPathExists(tmpHKey, BYCOPY lMainKey)
+          lret = Registry_PathExists(tmpHKey, BYCOPY lMainKey)
           FUNCTION = lret
         END IF
       END IF
@@ -152,7 +132,7 @@ FUNCTION Exec_Registry_GetDWord() AS EXT
         IF thinBasic_CheckCloseParens() THEN
           tmpHKey = Registry_ConvertHKey(lHKey)
           IF tmpHKey <> 0 THEN
-            lTmp = GetRegDwordValue(tmpHKey, BYCOPY lMainKey, BYCOPY lValueName)
+            lTmp = Registry_GetDWord(tmpHKey, BYCOPY lMainKey, BYCOPY lValueName)
             FUNCTION = lTmp
           END IF
         END IF
@@ -184,7 +164,7 @@ FUNCTION Exec_Registry_GetTxtNum() AS EXT
           IF thinBasic_CheckCloseParens() THEN
             tmpHKey = Registry_ConvertHKey(lHKey)
             IF tmpHKey <> 0 THEN
-              lTmp = GetRegTxtNumValue(tmpHKey, BYCOPY lMainKey, BYCOPY lValueName, BYCOPY lDefaultValue)
+              lTmp = Registry_GetTxtNum(tmpHKey, BYCOPY lMainKey, BYCOPY lValueName, BYCOPY lDefaultValue)
               FUNCTION = lTmp
             END IF
           END IF
@@ -217,8 +197,7 @@ FUNCTION Exec_Registry_GetTxtBool() AS EXT
           IF thinBasic_CheckCloseParens() THEN
             tmpHKey = Registry_ConvertHKey(lHKey)
             IF tmpHKey <> 0 THEN
-              lTmp = GetRegTxtBoolValue(tmpHKey, BYCOPY lMainKey, BYCOPY lValueName, BYCOPY lDefaultValue)
-              FUNCTION = lTmp
+              FUNCTION = Registry_GetTxtBool(tmpHKey, BYCOPY lMainKey, BYCOPY lValueName, BYCOPY lDefaultValue)
             END IF
           END IF
         END IF
@@ -250,7 +229,7 @@ FUNCTION Exec_Registry_SetValue() AS EXT
           IF thinBasic_CheckCloseParens() THEN
             tmpHKey = Registry_ConvertHKey(lHKey)
             IF tmpHKey <> 0 THEN
-              lTmp = SetRegValue(tmpHKey, BYCOPY lMainKey, BYCOPY lKey, BYCOPY lValue)
+              lTmp = Registry_SetValue(tmpHKey, BYCOPY lMainKey, BYCOPY lKey, BYCOPY lValue)
               FUNCTION = lTmp
             END IF
           END IF
@@ -283,7 +262,7 @@ FUNCTION Exec_Registry_SetDWord() AS EXT
           IF thinBasic_CheckCloseParens() THEN
             tmpHKey = Registry_ConvertHKey(lHKey)
             IF tmpHKey <> 0 THEN
-              lTmp = SetRegDwordValue(tmpHKey, BYCOPY lMainKey, BYCOPY lKey, BYCOPY lValue)
+              lTmp = Registry_SetDWord(tmpHKey, BYCOPY lMainKey, BYCOPY lKey, BYCOPY lValue)
               FUNCTION = lTmp
             END IF
           END IF
@@ -316,7 +295,7 @@ FUNCTION Exec_Registry_SetTxtNum() AS EXT
           IF thinBasic_CheckCloseParens() THEN
             tmpHKey = Registry_ConvertHKey(lHKey)
             IF tmpHKey <> 0 THEN
-              lTmp = SetRegTxtNumValue(tmpHKey, BYCOPY lMainKey, BYCOPY lKey, BYCOPY lValue)
+              lTmp = Registry_SetTxtNum(tmpHKey, BYCOPY lMainKey, BYCOPY lKey, BYCOPY lValue)
               FUNCTION = lTmp
             END IF
           END IF
@@ -349,7 +328,7 @@ FUNCTION Exec_Registry_SetTxtBool() AS EXT
           IF thinBasic_CheckCloseParens() THEN
             tmpHKey = Registry_ConvertHKey(lHKey)
             IF tmpHKey <> 0 THEN
-              lTmp = SetRegTxtBoolValue(tmpHKey, BYCOPY lMainKey, BYCOPY lKey, BYCOPY lValue)
+              lTmp = Registry_SetTxtBool(tmpHKey, BYCOPY lMainKey, BYCOPY lKey, BYCOPY lValue)
               FUNCTION = lTmp
             END IF
           END IF
@@ -389,7 +368,7 @@ FUNCTION Exec_Registry_GetAllKeys() AS STRING
     dwHKey = Registry_ConvertHKey(sHKey)
     IF thinBasic_ErrorFree() THEN
       azMainKey = sMainKey
-      FUNCTION = GetAllKeys(dwHKey, azMainKey, sSeparator)
+      FUNCTION = Registry_GetAllKeys(dwHKey, azMainKey, sSeparator)
     END IF
   END IF
 
@@ -417,7 +396,7 @@ FUNCTION Exec_Registry_DelValue() AS EXT
         IF thinBasic_CheckCloseParens() THEN
           tmpHKey = Registry_ConvertHKey(lHKey)
           IF tmpHKey <> 0 THEN
-            lTmp = DelRegValue(tmpHKey, BYCOPY lKey, BYCOPY lValueName)
+            lTmp = Registry_DelValue(tmpHKey, BYCOPY lKey, BYCOPY lValueName)
             FUNCTION = lTmp
           END IF
         END IF
@@ -444,15 +423,13 @@ FUNCTION Exec_Registry_DelKey() AS EXT
       IF thinBasic_CheckCloseParens() THEN
         tmpHKey = Registry_ConvertHKey(lHKey)
         IF tmpHKey <> 0 THEN
-          lTmp = DelRegKey(tmpHKey, BYCOPY lSubKey)
+          lTmp = Registry_DelKey(tmpHKey, BYCOPY lSubKey)
           FUNCTION = lTmp
         END IF
       END IF
     END IF
   END IF
 END FUNCTION
-
-
 
 '----------------------------------------------------------------------------
 FUNCTION LoadLocalSymbols ALIAS "LoadLocalSymbols" (OPTIONAL BYVAL sPath AS STRING) EXPORT AS LONG
@@ -463,22 +440,22 @@ FUNCTION LoadLocalSymbols ALIAS "LoadLocalSymbols" (OPTIONAL BYVAL sPath AS STRI
 ' new symbol (read Keyword) you have created.
 '----------------------------------------------------------------------------
 
-  thinBasic_LoadSymbol "Registry_GetAllKeys"  , %thinBasic_ReturnString , CODEPTR(Exec_Registry_GetAllKeys    ),  %thinBasic_ForceOverWrite
-  thinBasic_LoadSymbol "Registry_GetValue"    , %thinBasic_ReturnString , CODEPTR(Exec_Registry_GetValue      ),  %thinBasic_ForceOverWrite
-  thinBasic_LoadSymbol "Registry_GetDWord"    , %thinBasic_ReturnNumber , CODEPTR(Exec_Registry_GetDWord      ),  %thinBasic_ForceOverWrite
-  thinBasic_LoadSymbol "Registry_GetTxtNum"   , %thinBasic_ReturnNumber , CODEPTR(Exec_Registry_GetTxtNum     ),  %thinBasic_ForceOverWrite
-  thinBasic_LoadSymbol "Registry_GetTxtBool"  , %thinBasic_ReturnNumber , CODEPTR(Exec_Registry_GetTxtBool    ),  %thinBasic_ForceOverWrite
+  thinBasic_LoadSymbol "Registry_GetAllKeys"  , %thinBasic_ReturnString , CODEPTR(Exec_Registry_GetAllKeys),  %thinBasic_ForceOverWrite
+  thinBasic_LoadSymbol "Registry_GetValue"    , %thinBasic_ReturnString , CODEPTR(Exec_Registry_GetValue  ),  %thinBasic_ForceOverWrite
+  thinBasic_LoadSymbol "Registry_GetDWord"    , %thinBasic_ReturnNumber , CODEPTR(Exec_Registry_GetDWord  ),  %thinBasic_ForceOverWrite
+  thinBasic_LoadSymbol "Registry_GetTxtNum"   , %thinBasic_ReturnNumber , CODEPTR(Exec_Registry_GetTxtNum ),  %thinBasic_ForceOverWrite
+  thinBasic_LoadSymbol "Registry_GetTxtBool"  , %thinBasic_ReturnNumber , CODEPTR(Exec_Registry_GetTxtBool),  %thinBasic_ForceOverWrite
 
-  thinBasic_LoadSymbol "Registry_SetValue"    , %thinBasic_ReturnNumber , CODEPTR(Exec_Registry_SetValue      ),  %thinBasic_ForceOverWrite
-  thinBasic_LoadSymbol "Registry_SetDWord"    , %thinBasic_ReturnNumber , CODEPTR(Exec_Registry_SetDWord      ),  %thinBasic_ForceOverWrite
-  thinBasic_LoadSymbol "Registry_SetTxtNum"   , %thinBasic_ReturnNumber , CODEPTR(Exec_Registry_SetTxtNum     ),  %thinBasic_ForceOverWrite
-  thinBasic_LoadSymbol "Registry_SetTxtBool"  , %thinBasic_ReturnNumber , CODEPTR(Exec_Registry_SetTxtBool    ),  %thinBasic_ForceOverWrite
+  thinBasic_LoadSymbol "Registry_SetValue"    , %thinBasic_ReturnNumber , CODEPTR(Exec_Registry_SetValue  ),  %thinBasic_ForceOverWrite
+  thinBasic_LoadSymbol "Registry_SetDWord"    , %thinBasic_ReturnNumber , CODEPTR(Exec_Registry_SetDWord  ),  %thinBasic_ForceOverWrite
+  thinBasic_LoadSymbol "Registry_SetTxtNum"   , %thinBasic_ReturnNumber , CODEPTR(Exec_Registry_SetTxtNum ),  %thinBasic_ForceOverWrite
+  thinBasic_LoadSymbol "Registry_SetTxtBool"  , %thinBasic_ReturnNumber , CODEPTR(Exec_Registry_SetTxtBool),  %thinBasic_ForceOverWrite
 
-  thinBasic_LoadSymbol "Registry_DelValue"    , %thinBasic_ReturnNumber , CODEPTR(Exec_Registry_DelValue      ),  %thinBasic_ForceOverWrite
-  thinBasic_LoadSymbol "Registry_DelKey"      , %thinBasic_ReturnNumber , CODEPTR(Exec_Registry_DelKey        ),  %thinBasic_ForceOverWrite
+  thinBasic_LoadSymbol "Registry_DelValue"    , %thinBasic_ReturnNumber , CODEPTR(Exec_Registry_DelValue  ),  %thinBasic_ForceOverWrite
+  thinBasic_LoadSymbol "Registry_DelKey"      , %thinBasic_ReturnNumber , CODEPTR(Exec_Registry_DelKey    ),  %thinBasic_ForceOverWrite
 
-  thinBasic_LoadSymbol "Registry_KeyExists"   , %thinBasic_ReturnNumber , CODEPTR(Exec_Registry_KeyExists     ),  %thinBasic_ForceOverWrite
-  thinBasic_LoadSymbol "Registry_PathExists"  , %thinBasic_ReturnNumber , CODEPTR(Exec_Registry_PathExists    ),  %thinBasic_ForceOverWrite
+  thinBasic_LoadSymbol "Registry_KeyExists"   , %thinBasic_ReturnNumber , CODEPTR(Exec_Registry_KeyExists ),  %thinBasic_ForceOverWrite
+  thinBasic_LoadSymbol "Registry_PathExists"  , %thinBasic_ReturnNumber , CODEPTR(Exec_Registry_PathExists),  %thinBasic_ForceOverWrite
 
   FUNCTION = 0&
 END FUNCTION
@@ -490,10 +467,8 @@ FUNCTION UnLoadLocalSymbols ALIAS "UnLoadLocalSymbols" () EXPORT AS LONG
 ' Use this function to perform uninitialize process, if needed.
 '----------------------------------------------------------------------------
 
-
   FUNCTION = 0&
 END FUNCTION
-
 
 FUNCTION LIBMAIN ALIAS "LibMain" (BYVAL hInstance   AS LONG, _
                                   BYVAL fwdReason   AS LONG, _

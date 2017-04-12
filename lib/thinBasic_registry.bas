@@ -3,7 +3,7 @@
 #DIM ALL
 
 '------------------------------------------------------------------
-#INCLUDE ".\resources.inc"
+#INCLUDE ".\thinBasic_registry_resources.inc"
 #RESOURCE VERSIONINFO
 #RESOURCE FILEVERSION %THINBASIC_REGISTRY_VERSIONMAJOR, %THINBASIC_REGISTRY_VERSIONMINOR, %THINBASIC_REGISTRY_VERSIONBUILD, %THINBASIC_REGISTRY_VERSIONREVISION
 #RESOURCE PRODUCTVERSION %THINBASIC_REGISTRY_VERSIONMAJOR, %THINBASIC_REGISTRY_VERSIONMINOR, %THINBASIC_REGISTRY_VERSIONBUILD, %THINBASIC_REGISTRY_VERSIONREVISION
@@ -22,7 +22,7 @@
 '------------------------------------------------------------------
 #INCLUDE "WIN32API.INC"
 #INCLUDE ".\thinCore.INC"
-#INCLUDE ".\interface.INC"
+#INCLUDE ".\thinBasic_registry_interface.INC"
 '------------------------------------------------------------------
 
 '----------------------------------------------------------------------------

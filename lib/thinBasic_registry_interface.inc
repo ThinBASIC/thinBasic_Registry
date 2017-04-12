@@ -2,7 +2,7 @@
 ' Registry thinBASIC interface
 '
 
-#INCLUDE "implementation.inc"
+#INCLUDE "thinBasic_registry_implementation.inc"
 
 ' -----------------------------------------------------------------------------
 

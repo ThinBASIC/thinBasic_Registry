@@ -21,6 +21,7 @@
 #RESOURCE VERSION$ "Comments",         $THIN_COMMON_COMMENT
 '------------------------------------------------------------------
 #INCLUDE "WIN32API.INC"
+#INCLUDE ".\thinCore.INC"
 #INCLUDE ".\thinBasic_registry_interface.INC"
 '------------------------------------------------------------------
 

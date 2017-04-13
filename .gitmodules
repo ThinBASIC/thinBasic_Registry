@@ -1,0 +1,3 @@
+[submodule "lib/module_core"]
+	path = lib/module_core
+	url = https://github.com/ThinBASIC/module_core

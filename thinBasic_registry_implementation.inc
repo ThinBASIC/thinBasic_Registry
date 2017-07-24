@@ -4,7 +4,7 @@
 ' *
 ' * hKey        - registry key
 ' **************************************************************************
-FUNCTION Registry_GetAllValues(hKey AS DWORD) AS STRING
+FUNCTION Registry_GetAllValues(hKey AS DWORD, byval sSeparator as string) AS STRING
   DIM returnValue AS LONG
   DIM azKeyName AS ASCIIZ * 32767, azKeyNameLen AS DWORD
   DIM azKeyValue AS ASCIIZ * 1048576, azKeyValueLen AS DWORD
@@ -56,7 +56,7 @@ FUNCTION Registry_GetAllValues(hKey AS DWORD) AS STRING
     REDIM PRESERVE items(1 TO itemCount)
     ARRAY SORT items()
 
-    FUNCTION = JOIN$(items(), $CRLF)
+    FUNCTION = JOIN$(items(), sSeparator)
   END IF
 END FUNCTION
 
@@ -98,7 +98,7 @@ FUNCTION Registry_GetAllKeys(BYVAL lHKey AS DWORD, lHive AS ASCIIZ, BYVAL sSep A
       thinbasic_RunTimeError ( %ERR__MODULE_SPECIFIC, errorMessage )
   END IF
 
-  result = Registry_GetAllValues(hKey)
+  result = Registry_GetAllValues(hKey, sSep)
 
   ' Enumerate all the subkeys for the current key.
   '...............................................
@@ -106,7 +106,7 @@ FUNCTION Registry_GetAllKeys(BYVAL lHKey AS DWORD, lHive AS ASCIIZ, BYVAL sSep A
      IF returnValue = %ERROR_SUCCESS THEN
         lSubKeyNameLen = SIZEOF(azSubKeyName)
         lClassLen = SIZEOF(azClass)
-        returnValue = RegEnumKeyEx(hKey, lIndex, azSubKeyName, BYVAL VARPTR(lSubKeyNameLen), Reserved, BYVAL VARPTR(azClass), BYVAL VARPTR(lClasslen), LastWriteTime)
+        returnValue = RegEnumKeyEx(hKey, lIndex, azSubKeyName, BYVAL VARPTR(lSubKeyNameLen), BYVAL Reserved, BYVAL VARPTR(azClass), BYVAL VARPTR(lClasslen), LastWriteTime)
 
         IF (returnValue <> %ERROR_NO_MORE_ITEMS) THEN
            IF returnValue = %ERROR_SUCCESS THEN

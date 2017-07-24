@@ -4,6 +4,8 @@ thinBasic module responsible for Windows Registry handling.
 ## Development
 The module is designed to be compiled with *PowerBASIC for Windows, 10.04*.
 
+You need to clone [module_core](https://github.com/ThinBASIC/module_core) locally, needed for rc compilation.
+
 Compile the thinBasic_registry.rc to thinBasic_registry.res.
  
 Compile the thinBasic_registry.bas and copy it to thinBasic lib/ directory.
